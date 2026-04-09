@@ -1,26 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zenix APKs - Premium Android Store</title>
+    <title>Zenix Support - AI Bot</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: #0f172a; color: white; margin: 0; padding: 0; text-align: center; }
-        header { background: #1e293b; padding: 20px; border-bottom: 3px solid #3b82f6; }
-        .logo { font-size: 28px; font-weight: bold; color: #3b82f6; }
-        .container { padding: 40px 20px; }
-        .app-card { background: #1e293b; border-radius: 15px; padding: 30px; max-width: 400px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .download-btn { background: #2563eb; color: white; padding: 15px 40px; border-radius: 50px; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; margin: 0; padding: 10px; }
+        .chat-container { max-width: 500px; margin: 10px auto; background: #1e293b; border-radius: 15px; overflow: hidden; border: 1px solid #3b82f6; display: flex; flex-direction: column; height: 90vh; }
+        #chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; background: #111827; }
+        .msg { margin-bottom: 12px; padding: 12px; border-radius: 12px; max-width: 85%; font-size: 15px; line-height: 1.4; position: relative; }
+        .bot { background: #1e3a8a; align-self: flex-start; color: #e5e7eb; }
+        .user { background: #374151; align-self: flex-end; }
+        .img-preview { max-width: 100%; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+        .listen-btn { background: none; border: none; cursor: pointer; font-size: 16px; margin-left: 5px; }
+        .controls { display: flex; padding: 10px; background: #1e293b; gap: 8px; align-items: center; border-top: 1px solid #334155; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #0f172a; color: white; }
+        button { border: none; cursor: pointer; border-radius: 8px; transition: 0.3s; }
+        .icon-btn { background: #334155; color: white; padding: 10px; font-size: 18px; }
+        .send-btn { background: #3b82f6; color: white; padding: 12px 15px; font-weight: bold; }
+        .upload-label { background: #475569; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 18px; }
     </style>
 </head>
 <body>
-<header><div class="logo">ZENIX APKS</div></header>
-<div class="container">
-    <div class="app-card">
-        <h1>BATTLE GO</h1>
-        <p>Official download portal.</p>
-        <a href="APKA_DOWNLOAD_LINK_YAHAN_DALO" class="download-btn">DOWNLOAD APK</a>
+
+<div class="chat-container">
+    <div id="chat-box">
+        <div class="msg bot">Zenix AI: Namaste! Tasveer bhej kar ya bol kar apni pareshani batayein. <button class="listen-btn" onclick="speak('Namaste! Tasveer bhej kar ya bol kar apni pareshani batayein.')">🔊</button></div>
+    </div>
+    
+    <div class="controls">
+        <label class="upload-label" title="Photo Bhejein">🖼️<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto()"></label>
+        
+        <input type="text" id="user-input" placeholder="Kuch likhein...">
+        
+        <button class="icon-btn" id="mic-btn" style="background: #ef4444;">🎤</button>
+        
+        <button class="send-btn" onclick="sendMessage()">Bhejein</button>
     </div>
 </div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyAUCGC5496YqPVT54qk63kulPENtWprDuE",
+        authDomain: "wgahsjjeehjjkjjkk-it.firebaseapp.com",
+        databaseURL: "https://wgahsjjeehjjkjjkk-it-default-rtdb.firebaseio.com",
+        projectId: "wgahsjjeehjjkjjkk-it",
+        storageBucket: "wgahsjjeehjjkjjkk-it.firebasestorage.app",
+        messagingSenderId: "258991455678",
+        appId: "1:258991455678:web:1e1b6958d20a40befa0def"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const storage = firebase.storage();
+
+    // 1. Tasveer Upload Feature
+    function uploadPhoto() {
+        const file = document.getElementById('photo-input').files[0];
+        if (!file) return;
+
+        // Local display (Aapko chat mein turant dikhegi)
+        const reader = new FileReader();
+        reader.onload = (e) => addMsg(`<img src="${e.target.result}" class="img-preview">`, 'user', true);
+        reader.readAsDataURL(file);
+
+        // Firebase Storage mein upload
+        const ref = storage.ref('support_photos/' + Date.now() + "_" + file.name);
+        ref.put(file).then(() => {
+            let botResp = "Aapki tasveer mil gayi hai. Hum ise check kar rahe hain.";
+            addMsg(botResp, 'bot');
+            speak(botResp);
+        }).catch(err => alert("Upload error: " + err.message));
+    }
+
+    // 2. Mic (Voice to Text)
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'hi-IN';
+    document.getElementById('mic-btn').onclick = () => {
+        recognition.start();
+        document.getElementById('mic-btn').style.background = '#22c55e';
+    };
+    recognition.onresult = (e) => {
+        document.getElementById('user-input').value = e.results[0][0].transcript;
+        document.getElementById('mic-btn').style.background = '#ef4444';
+    };
+
+    // 3. Voice (Text to Speech)
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        let msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'hi-IN';
+        window.speechSynthesis.speak(msg);
+    }
+
+    // 4. Message Handle
+    async function sendMessage() {
+        let input = document.getElementById('user-input');
+        let text = input.value.trim();
+        if (!text) return;
+
+        addMsg(text, 'user');
+        input.value = "";
+
+        // Realtime Database Rules Check
+        database.ref('bot_rules').once('value').then(snap => {
+            let rules = snap.val() || {};
+            let resp = "Main sirf Zenix support ke liye hoon.";
+
+            if (rules.blocked_words && rules.blocked_words.some(w => text.toLowerCase().includes(w.toLowerCase()))) {
+                resp = "Gali galauj na karein, ye sakht mana hai!";
+            } else if (text.toLowerCase().includes("password")) {
+                resp = "ID recovery ke liye kripya apna screenshot bhej dein.";
+            }
+
+            addMsg(resp, 'bot');
+            // speak(resp); // Auto-voice ke liye
+        });
+    }
+
+    function addMsg(content, type, isHTML = false) {
+        let box = document.getElementById('chat-box');
+        let div = document.createElement('div');
+        div.className = "msg " + type;
+        
+        if (type === 'bot') {
+            div.innerHTML = `Zenix AI: ${content} <button class="listen-btn" onclick="speak('${content.replace(/'/g, "\\'")}')">🔊</button>`;
+        } else {
+            isHTML ? div.innerHTML = content : div.innerText = "Aap: " + content;
+        }
+        
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+</script>
 </body>
 </html>
