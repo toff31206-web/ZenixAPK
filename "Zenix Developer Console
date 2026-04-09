@@ -1,1 +1,165 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenix Developer Console - Publish Your App</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <style>
+        :root { --primary: #3b82f6; --dark: #0f172a; --card: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; }
+        .navbar { background: var(--card); padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); }
+        .container { max-width: 800px; margin: 30px auto; padding: 20px; }
+        .auth-box { text-align: center; margin-top: 100px; background: var(--card); padding: 40px; border-radius: 15px; }
+        .hidden { display: none; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #94a3b8; }
+        input, textarea, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #111827; color: white; box-sizing: border-box; }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        .google-btn { background: white; color: black; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .status-msg { background: #065f46; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div style="font-size: 24px; font-weight: bold;">ZENIX <span style="color:var(--primary)">DEVELOPER</span></div>
+    <div id="user-info"></div>
+</div>
+
+<div class="container">
+    <div id="login-section" class="auth-box">
+        <h2>Developer Login</h2>
+        <p>Apna app public karne ke liye Google se sign-in karein.</p>
+        <button class="btn google-btn" onclick="googleLogin()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> Google se Sign-in karein
+        </button>
+    </div>
+
+    <div id="upload-section" class="hidden">
+        <h2 style="color:var(--primary)">Naya Application Submit Karein</h2>
+        <div class="form-group">
+            <label>App ka Naam</label>
+            <input type="text" id="app-name" placeholder="E.g. Battle Go Mobile">
+        </div>
+        <div class="form-group">
+            <label>Category Select Karein</label>
+            <select id="app-category">
+                <option value="Action">Action Game</option>
+                <option value="Tools">Tools / Utility</option>
+                <option value="Social">Social Media</option>
+                <option value="Education">Education</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>App Description (Vistar se likhein)</label>
+            <textarea id="app-desc" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+            <label>APK File Chunein</label>
+            <input type="file" id="app-apk" accept=".apk">
+        </div>
+        <div class="form-group">
+            <label>App Banner (1280x720)</label>
+            <input type="file" id="app-banner" accept="image/*">
+        </div>
+        <div class="form-group">
+            <label>Privacy Policy Link (URL)</label>
+            <input type="url" id="app-privacy" placeholder="https://myweb.com/policy">
+        </div>
+        <div class="form-group">
+            <label>Hashtags (Space dekar likhein)</label>
+            <input type="text" id="app-tags" placeholder="#gaming #action #new">
+        </div>
+        <button class="btn" onclick="submitApp()">PUBLISH REQUEST BHEJEIN</button>
+        
+        <div id="status" class="hidden status-msg">
+            Aapka request mil gaya hai! Hum 48 ghante mein ise live kar denge.
+        </div>
+    </div>
+</div>
+
+<script>
+    // Aapka Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyAUCGC5496YqPVT54qk63kulPENtWprDuE",
+        authDomain: "wgahsjjeehjjkjjkk-it.firebaseapp.com",
+        databaseURL: "https://wgahsjjeehjjkjjkk-it-default-rtdb.firebaseio.com",
+        projectId: "wgahsjjeehjjkjjkk-it",
+        storageBucket: "wgahsjjeehjjkjjkk-it.firebasestorage.app",
+        messagingSenderId: "258991455678",
+        appId: "1:258991455678:web:1e1b6958d20a40befa0def"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const storage = firebase.storage();
+
+    // 1. Google Login Function
+    function googleLogin() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).then((result) => {
+            showDashboard(result.user);
+        }).catch(err => alert(err.message));
+    }
+
+    // 2. Dashboard Switcher
+    auth.onAuthStateChanged(user => {
+        if (user) showDashboard(user);
+    });
+
+    function showDashboard(user) {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('upload-section').classList.remove('hidden');
+        document.getElementById('user-info').innerText = "Namaste, " + user.displayName;
+    }
+
+    // 3. Submit App Logic
+    async function submitApp() {
+        const name = document.getElementById('app-name').value;
+        const apkFile = document.getElementById('app-apk').files[0];
+        const bannerFile = document.getElementById('app-banner').files[0];
+
+        if(!name || !apkFile || !bannerFile) {
+            alert("Kripya sabhi zaroori cheezein bharein!");
+            return;
+        }
+
+        // Uploading APK and Banner to Storage
+        const apkRef = storage.ref('pending_apps/' + Date.now() + "_" + apkFile.name);
+        const bannerRef = storage.ref('pending_banners/' + Date.now() + "_" + bannerFile.name);
+
+        await apkRef.put(apkFile);
+        await bannerRef.put(bannerFile);
+
+        const apkUrl = await apkRef.getDownloadURL();
+        const bannerUrl = await bannerRef.getDownloadURL();
+
+        // Saving Details to Realtime Database (for Admin to See)
+        const appData = {
+            developer: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            appName: name,
+            category: document.getElementById('app-category').value,
+            description: document.getElementById('app-desc').value,
+            privacy: document.getElementById('app-privacy').value,
+            tags: document.getElementById('app-tags').value,
+            apk: apkUrl,
+            banner: bannerUrl,
+            status: "pending",
+            timestamp: Date.now()
+        };
+
+        db.ref('app_requests').push(appData).then(() => {
+            document.getElementById('status').classList.remove('hidden');
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+    }
+</script>
+</body>
+</html>
 
